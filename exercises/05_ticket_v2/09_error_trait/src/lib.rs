@@ -3,9 +3,20 @@
 //  The docs for the `std::fmt` module are a good place to start and look for examples:
 //  https://doc.rust-lang.org/std/fmt/index.html#write
 
+#[derive(Debug)]
 enum TicketNewError {
     TitleError(String),
     DescriptionError(String),
+}
+
+impl std::error::Error for TicketNewError {}
+impl std::fmt::Display for TicketNewError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        match self {
+            TicketNewError::TitleError(e) => write!(f, "{}", e),
+            TicketNewError::DescriptionError(e) => write!(f, "{}", e),
+        }
+    }
 }
 
 // TODO: `easy_ticket` should panic when the title is invalid, using the error message
@@ -13,7 +24,15 @@ enum TicketNewError {
 //   When the description is invalid, instead, it should use a default description:
 //   "Description not provided".
 fn easy_ticket(title: String, description: String, status: Status) -> Ticket {
-    todo!()
+    match Ticket::new(title.clone(), description.clone(), status.clone()) {
+        Ok(ticket) => ticket,
+        Err(err) => match err {
+            TicketNewError::TitleError(_) => panic!("{err}"),
+            TicketNewError::DescriptionError(_) => {
+                Ticket::new(title, "Description not provided".to_string(), status).unwrap()
+            }
+        },
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -74,12 +93,18 @@ mod tests {
     #[test]
     #[should_panic(expected = "Title cannot be empty")]
     fn title_cannot_be_empty() {
-        easy_ticket("".into(), valid_description(), Status::ToDo);
+        easy_ticket(
+            "".into(),
+            valid_description(),
+            Status::InProgress {
+                assigned_to: "in progres...".into(),
+            },
+        );
     }
 
     #[test]
     fn template_description_is_used_if_empty() {
-        let ticket = easy_ticket(valid_title(), "".into(), Status::ToDo);
+        let ticket = easy_ticket(valid_title(), "".into(), Status::Done);
         assert_eq!(ticket.description, "Description not provided");
     }
 
